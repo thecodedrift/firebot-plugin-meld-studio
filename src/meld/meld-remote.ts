@@ -24,6 +24,20 @@ interface RemoteParams {
     screenshotDir?: string;
 }
 
+// Identifier Meld associates with our track observer registrations.
+const OBSERVER_CONTEXT = "firebot-meld-plugin";
+
+// Fades run in dB space (Meld's fader is linear-in-dB); this is the quietest
+// point we ramp to before snapping to true silence (amplitude 0).
+const FADE_FLOOR_DB = -60;
+
+// How often we push a new gain value during a fade.
+const FADE_STEP_MS = 25;
+
+// Meld floods gainUpdated during any change; debounce before surfacing the
+// Firebot event so we don't swamp the event queue.
+const VOLUME_EVENT_DEBOUNCE_MS = 150;
+
 class MeldRemote {
     private _ipAddress: string = "127.0.0.1";
     private _port: number = 13376;
@@ -34,7 +48,18 @@ class MeldRemote {
     private _eventManager: ScriptModules["eventManager"];
     private _cachedSessionItems: MeldStudioSessionItemWithId[];
     private _shuttingDown = false;
-    
+
+    // Last-known linear gain (0.0-1.0) per track, seeded at connect from the
+    // gainUpdated Meld emits on observer registration.
+    private _gainCache = new Map<string, number>();
+    // Cancel callbacks for in-flight fades, keyed by track id.
+    private _activeFades = new Map<string, () => void>();
+    // Tracks currently being faded by us, so we can suppress our own steps
+    // from re-triggering the Firebot volume-changed event.
+    private _fadingTracks = new Set<string>();
+    // Debounce timers for the volume-changed event, keyed by track id.
+    private _volumeEventTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
     meld: MeldStudio;
 
     private buildSessionItemObject(items: Record<string, MeldStudioSessionItem>): MeldStudioSessionItemWithId[] {
@@ -75,7 +100,9 @@ class MeldRemote {
                 this.meld = channel.objects.meld;
                 this._cachedSessionItems = this.buildSessionItemObject(this.meld.session.items);
 
+                this._gainCache.clear();
                 this.setupListeners();
+                this.registerTrackObservers();
 
                 this._connected = true;
                 this._eventManager.triggerEvent(
@@ -89,6 +116,21 @@ class MeldRemote {
 
     shutdown(): void {
         this._shuttingDown = true;
+
+        // Cancel any in-flight fades and pending debounced events.
+        for (const cancel of this._activeFades.values()) {
+            cancel();
+        }
+        this._activeFades.clear();
+        this._fadingTracks.clear();
+        for (const timer of this._volumeEventTimers.values()) {
+            clearTimeout(timer);
+        }
+        this._volumeEventTimers.clear();
+
+        this.unregisterTrackObservers();
+        this._gainCache.clear();
+
         this._webChannel = undefined;
         this._ws.close();
         this._ws = undefined;
@@ -101,6 +143,14 @@ class MeldRemote {
 
             // Build new session object
             const newSessionObject = this.buildSessionItemObject(this.meld.session.items);
+
+            // Observe any tracks that have appeared since the last session update
+            // so their gain lands in the cache (registration echoes current gain).
+            for (const track of newSessionObject.filter(t => t.type === "track")) {
+                if (!this._gainCache.has(track.id)) {
+                    this.meld.registerTrackObserver(OBSERVER_CONTEXT, track.id);
+                }
+            }
 
             // Check for new active scene
             const newActiveScene = this.getActiveScene();
@@ -189,8 +239,34 @@ class MeldRemote {
             );
         });
 
-        this.meld.gainUpdated.connect((trackId, gain, muted) => {
-            PluginLogger.logDebug("Received GainUpdated event from Meld");
+        this.meld.gainUpdated.connect((trackId, gain) => {
+            const previousGain = this._gainCache.get(trackId);
+            this._gainCache.set(trackId, gain);
+
+            // First value for a track is the seed Meld emits on observer
+            // registration, not a user-driven change; cache it silently.
+            if (previousGain === undefined) {
+                return;
+            }
+
+            // Our own fade steps keep the cache fresh but must not spam the
+            // Firebot event or re-enter as external changes.
+            if (this._fadingTracks.has(trackId)) {
+                return;
+            }
+
+            this.debounceVolumeChangedEvent(trackId, gain);
+        });
+    }
+
+    private debounceVolumeChangedEvent(trackId: string, gain: number): void {
+        const existing = this._volumeEventTimers.get(trackId);
+        if (existing) {
+            clearTimeout(existing);
+        }
+
+        this._volumeEventTimers.set(trackId, setTimeout(() => {
+            this._volumeEventTimers.delete(trackId);
             const track = this.getAllTracks().find(t => t.id === trackId);
 
             this._eventManager.triggerEvent(
@@ -202,7 +278,23 @@ class MeldRemote {
                     volume: gain
                 }
             );
-        });
+        }, VOLUME_EVENT_DEBOUNCE_MS));
+    }
+
+    private registerTrackObservers(): void {
+        for (const track of this.getAllTracks()) {
+            this.meld.registerTrackObserver(OBSERVER_CONTEXT, track.id);
+        }
+    }
+
+    private unregisterTrackObservers(): void {
+        for (const trackId of this._gainCache.keys()) {
+            try {
+                this.meld?.unregisterTrackObserver(OBSERVER_CONTEXT, trackId);
+            } catch {
+                // Meld may already be gone during shutdown; nothing to do.
+            }
+        }
     }
 
     isConnected(): boolean {
@@ -521,6 +613,126 @@ class MeldRemote {
         }
 
         this._setEffectEnabled(effect, enabled);
+    }
+
+    // ------------- AUDIO FADES ---------------
+
+    private _ampToDb(amp: number): number {
+        if (amp <= 0) {
+            return FADE_FLOOR_DB;
+        }
+        const db = 20 * Math.log10(amp);
+        return db < FADE_FLOOR_DB ? FADE_FLOOR_DB : db;
+    }
+
+    private _dbToAmp(db: number): number {
+        if (db <= FADE_FLOOR_DB) {
+            return 0;
+        }
+        const amp = Math.pow(10, db / 20);
+        return amp > 1 ? 1 : amp;
+    }
+
+    private _ease(curve: FadeCurve, t: number): number {
+        switch (curve) {
+            // Slow start, quick finish.
+            case "ease-in":
+                return t * t;
+            // Quick start, gentle finish.
+            case "ease-out":
+                return 1 - (1 - t) * (1 - t);
+            case "linear":
+            default:
+                return t;
+        }
+    }
+
+    /**
+     * Returns a track's current volume in dB (0 dB = unity), or `undefined`
+     * if we have never observed a value for it. Silence reads as the fade
+     * floor.
+     */
+    getTrackGainDb(trackId: string): number | undefined {
+        const amp = this._gainCache.get(trackId);
+        return amp === undefined ? undefined : this._ampToDb(amp);
+    }
+
+    /**
+     * Ramps a track's gain from its current value to `targetDb` over
+     * `durationMs`, stepping in dB space so the fade sounds even. Resolves with
+     * the track's original volume in dB (its level before the fade started).
+     * Any fade already running on the track is cancelled first.
+     */
+    fadeTrackGain(
+        trackId: string,
+        targetDb: number,
+        durationMs: number,
+        curve: FadeCurve,
+        signal?: AbortSignal
+    ): Promise<number> {
+        // Cancel a fade already in flight on this track so they don't fight.
+        this._activeFades.get(trackId)?.();
+
+        const currentAmp = this._gainCache.get(trackId) ?? 1;
+        const fromDb = this._ampToDb(currentAmp);
+        const toDb = targetDb;
+
+        // Jump straight to the target for a zero/negative duration.
+        if (durationMs <= 0 || fromDb === toDb) {
+            this._fadingTracks.add(trackId);
+            const amp = this._dbToAmp(toDb);
+            this.meld.setGain(trackId, amp);
+            this._gainCache.set(trackId, amp);
+            this._fadingTracks.delete(trackId);
+            return Promise.resolve(fromDb);
+        }
+
+        return new Promise<number>((resolve) => {
+            this._fadingTracks.add(trackId);
+            const startTime = Date.now();
+
+            const finish = () => {
+                clearInterval(timer);
+                signal?.removeEventListener("abort", finish);
+                this._fadingTracks.delete(trackId);
+                this._activeFades.delete(trackId);
+                resolve(fromDb);
+            };
+
+            // Register cancellation hooks (new fade on this track, abort, shutdown).
+            this._activeFades.set(trackId, finish);
+            signal?.addEventListener("abort", finish, { once: true });
+
+            const timer = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                let t = elapsed / durationMs;
+                if (t >= 1) {
+                    t = 1;
+                }
+
+                const db = fromDb + (toDb - fromDb) * this._ease(curve, t);
+                const amp = this._dbToAmp(db);
+                this.meld.setGain(trackId, amp);
+                this._gainCache.set(trackId, amp);
+
+                if (t >= 1) {
+                    finish();
+                }
+            }, FADE_STEP_MS);
+        });
+    }
+
+    /**
+     * Fades a track down to silence. Resolves with its original volume in dB
+     * so it can be restored later.
+     */
+    fadeTrackOut(
+        trackId: string,
+        durationMs: number,
+        curve: FadeCurve,
+        signal?: AbortSignal
+    ): Promise<number> {
+        return this.fadeTrackGain(trackId, FADE_FLOOR_DB, durationMs, curve, signal);
     }
 
     // ------------- MISC ACTIONS ---------------

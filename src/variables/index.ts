@@ -6,6 +6,7 @@ import { SceneNameVariable } from "./scene-name";
 import { StagedSceneIdVariable } from "./staged-scene-id";
 import { StagedSceneNameVariable } from "./staged-scene-name";
 import { TrackVolumeVariable } from "./track-volume";
+import { TrackVolumeDbVariable } from "./track-volume-db";
 import { TrackIdVariable } from "./track-id";
 import { TrackNameVariable } from "./track-name";
 import { TrackMonitoringVariable } from "./track-monitoring";
@@ -21,5 +22,6 @@ export const MeldVariables = [
     TrackIdVariable,
     TrackMonitoringVariable,
     TrackNameVariable,
-    TrackVolumeVariable
+    TrackVolumeVariable,
+    TrackVolumeDbVariable
 ]

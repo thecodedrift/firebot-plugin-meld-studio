@@ -18,6 +18,11 @@ type MeldStudioSessionItemType =
     | "layer"
     | "effect";
 
+type FadeCurve =
+    | "linear"
+    | "ease-in"
+    | "ease-out";
+
 type MeldStudioSessionItemBase = {
     type: MeldStudioSessionItemType;
     name: string;
@@ -174,9 +179,32 @@ type MeldStudio = {
     /**
      * Adjusts the gain/volume for an audio track
      * @param trackId ID of the track
-     * @param level Gain/volume level
+     * @param level Gain/volume level as a linear amplitude from `0.0` to `1.0`
      */
     setGain: (trackId: string, level: number) => void;
+
+    /**
+     * Sets the name of the connecting client, used as the identifier for
+     * observer registrations
+     * @param name Client name
+     */
+    setClientName: (name: string) => void;
+
+    /**
+     * Subscribes a context to gain/mute updates for a track. Meld only emits
+     * `gainUpdated` for tracks that have an active observer, and emits the
+     * track's current value immediately upon registration.
+     * @param context Identifier for the registering context
+     * @param trackId ID of the track to observe
+     */
+    registerTrackObserver: (context: string, trackId: string) => void;
+
+    /**
+     * Removes a previously registered track observer
+     * @param context Identifier used when registering (must match)
+     * @param trackId ID of the track to stop observing
+     */
+    unregisterTrackObserver: (context: string, trackId: string) => void;
 
     /**
      * Toggles monitoring status of an audio track
