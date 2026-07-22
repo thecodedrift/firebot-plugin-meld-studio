@@ -359,6 +359,30 @@ class MeldRemote {
         this._setObjectProperty(source.id, "url", url);
     }
 
+    setLayerPlaybackById(layerId: string, action: "play" | "pause"): void {
+        PluginLogger.logDebug(`${action === "play" ? "Resuming" : "Pausing"} layer with ID ${layerId}`);
+        const layer = this.getAllLayers().find(l => l.id === layerId);
+
+        if (!layer) {
+            PluginLogger.logWarn(`Cannot find layer with ID ${layerId}`);
+            return;
+        }
+
+        this.meld.callFunction(layer.id, action);
+    }
+
+    setLayerPlaybackByName(layerName: string, action: "play" | "pause"): void {
+        PluginLogger.logDebug(`${action === "play" ? "Resuming" : "Pausing"} layer ${layerName}`);
+        const layer = this.getAllLayers().find(l => l.name === layerName);
+
+        if (!layer) {
+            PluginLogger.logWarn(`Cannot find layer named ${layerName}`);
+            return;
+        }
+
+        this.meld.callFunction(layer.id, action);
+    }
+
     // ------------- AUDIO TRACKS ---------------
 
     private _setTrackMute(
