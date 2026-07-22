@@ -25,6 +25,7 @@ let frontendCommunicator: ScriptModules["frontendCommunicator"];
 const script: Firebot.CustomScript<{
     ipAddress: string;
     port: number;
+    screenshotDir: string;
 }> = {
     getScriptManifest: () => ({
         name: PLUGIN_NAME,
@@ -46,6 +47,17 @@ const script: Firebot.CustomScript<{
             title: "Port",
             description: "Port that Meld Studio is listening on. Default is `13376`.",
             default: 13376
+        },
+        screenshotDir: {
+            type: "filepath",
+            title: "Meld Screenshot Folder",
+            description: "The folder Meld Studio saves screenshots to. Required for the \"Take Scene Screenshot\" effect, which moves each new screenshot out of this folder to a destination you choose. Find it in Meld under Settings > Recording.",
+            fileOptions: {
+                directoryOnly: true,
+                filters: [],
+                title: "Select Meld Screenshot Folder",
+                buttonLabel: "Select Folder"
+            }
         }
     }),
     parametersUpdated: (params) => {

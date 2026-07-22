@@ -11,6 +11,7 @@ import {
     GET_MEDIA_LAYERS_FRONTEND_COMMAND,
     GET_BROWSER_LAYERS_FRONTEND_COMMAND,
     GET_CONNECTED_FRONTEND_COMMAND,
+    GET_SCREENSHOT_DIR_FRONTEND_COMMAND,
 } from "./constants";
 
 const registeredFrontendListeners: { id: string, eventName: string }[] = [];
@@ -38,6 +39,10 @@ export function registerFrontendListeners(
 ) {
     registerFrontendListener(frontendCommunicator, GET_CONNECTED_FRONTEND_COMMAND,
         () => MeldRemote.isConnected()
+    );
+
+    registerFrontendListener(frontendCommunicator, GET_SCREENSHOT_DIR_FRONTEND_COMMAND,
+        () => MeldRemote.getScreenshotDir()
     );
 
     registerFrontendListener(frontendCommunicator, GET_SCENE_LIST_FRONTEND_COMMAND,

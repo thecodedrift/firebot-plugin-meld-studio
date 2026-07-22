@@ -9,6 +9,7 @@ import { StartRecordingEffect } from "./start-recording";
 import { StartStreamingEffect } from "./start-streaming";
 import { StopRecordingEffect } from "./stop-recording";
 import { StopStreamingEffect } from "./stop-streaming";
+import { TakeSceneScreenshotEffect } from "./take-scene-screenshot";
 import { TakeScreenshotEffect } from "./take-screenshot";
 import { ToggleEffectEffect } from "./toggle-effect";
 import { ToggleLayerVisibilityEffect } from "./toggle-layer-visibility";
@@ -28,6 +29,7 @@ export const MeldEffects = [
     StartStreamingEffect,
     StopRecordingEffect,
     StopStreamingEffect,
+    TakeSceneScreenshotEffect,
     TakeScreenshotEffect,
     ToggleEffectEffect,
     ToggleLayerVisibilityEffect,

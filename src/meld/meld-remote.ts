@@ -21,11 +21,13 @@ import {
 interface RemoteParams {
     ipAddress: string;
     port: number;
+    screenshotDir?: string;
 }
 
 class MeldRemote {
     private _ipAddress: string = "127.0.0.1";
     private _port: number = 13376;
+    private _screenshotDir: string = "";
     private _connected = false;
     private _ws: ReconnectingWebSocket;
     private _webChannel: QWebChannel;
@@ -47,11 +49,12 @@ class MeldRemote {
 
     setupRemote(
         eventManager: ScriptModules["eventManager"],
-        { ipAddress, port }: RemoteParams
+        { ipAddress, port, screenshotDir }: RemoteParams
     ): void {
         this._eventManager = eventManager;
         this._ipAddress = ipAddress;
         this._port = port;
+        this._screenshotDir = screenshotDir ?? "";
 
         this._ws = new ReconnectingWebSocket(() => `ws://${this._ipAddress}:${this._port}`);
 
@@ -206,9 +209,14 @@ class MeldRemote {
         return this._connected;
     }
 
-    updateParams({ ipAddress, port }: { ipAddress: string, port: number }): void {
+    updateParams({ ipAddress, port, screenshotDir }: RemoteParams): void {
         this._ipAddress = ipAddress;
         this._port = port;
+        this._screenshotDir = screenshotDir ?? "";
+    }
+
+    getScreenshotDir(): string {
+        return this._screenshotDir;
     }
 
     // ------------- STREAM ---------------

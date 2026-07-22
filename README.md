@@ -13,7 +13,8 @@ This plugin adds support for controlling Meld Studio to [Firebot](https://firebo
 4. Click "Add New Script"
 5. Select the `firebot-meld-studio.js` file from the dropdown list
 6. If necessary, update the **IP Address** and **Port** parameters
-7. Click "Save"
+7. (Optional) Set the **Meld Screenshot Folder** to the folder Meld saves screenshots to (Meld's **Settings > Recording**). This is only required for the **Take Scene Screenshot** effect.
+8. Click "Save"
 
 ## Effects
 
@@ -33,6 +34,7 @@ New effects:
 - **Meld Studio: Toggle Virtual Camera**
 - **Meld Studio: Record Clip**
 - **Meld Studio: Take Screenshot**
+- **Meld Studio: Take Scene Screenshot** (saves to a chosen folder with a custom filename; requires the **Meld Screenshot Folder** setting)
 - **Meld Studio: Show Replay**
 - **Meld Studio: Dismiss Replay**
 
