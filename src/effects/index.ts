@@ -1,5 +1,6 @@
 import { ClipEffect } from "./clip";
 import { DismissReplayEffect } from "./dismiss-replay";
+import { PauseResumeLayerEffect } from "./pause-resume-layer";
 import { SetBrowserSourceUrlEffect } from "./set-browser-source-url";
 import { ShowReplayEffect } from "./show-replay";
 import { ShowSceneEffect } from "./show-scene";
@@ -20,6 +21,7 @@ import { ToggleVirtualCameraEffect } from "./toggle-virtual-camera";
 export const MeldEffects = [
     ClipEffect,
     DismissReplayEffect,
+    PauseResumeLayerEffect,
     SetBrowserSourceUrlEffect,
     ShowReplayEffect,
     ShowSceneEffect,
