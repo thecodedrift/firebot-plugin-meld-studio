@@ -407,6 +407,55 @@ class MeldRemote {
         this._setTrackMonitor(track, monitor);
     }
 
+    // ------------- EFFECTS ---------------
+
+    private _setEffectEnabled(
+        effect: MeldStudioSessionEffectWithId,
+        enabled: boolean | "toggle"
+    ): void {
+        if (enabled === "toggle") {
+            const layer = this.getAllLayers().find(l => l.id === effect.parent);
+            const sceneId = layer?.parent;
+
+            if (!layer || !sceneId) {
+                PluginLogger.logWarn(`Cannot resolve scene/layer for effect ID ${effect.id}`);
+                return;
+            }
+
+            this.meld.toggleEffect(sceneId, layer.id, effect.id);
+        } else {
+            this._setObjectProperty(effect.id, "enabled", enabled);
+        }
+    }
+
+    setEffectEnabledById(effectId: string, enabled: boolean | "toggle"): void {
+        PluginLogger.logDebug(`${enabled === "toggle"
+            ? "Toggling"
+            : (enabled === true ? "Enabling" : "Disabling")} effect with ID ${effectId}`);
+        const effect = this.getAllEffects().find(e => e.id === effectId);
+
+        if (!effect) {
+            PluginLogger.logWarn(`Cannot find effect with ID ${effectId}`);
+            return;
+        }
+
+        this._setEffectEnabled(effect, enabled);
+    }
+
+    setEffectEnabledByName(effectName: string, enabled: boolean | "toggle"): void {
+        PluginLogger.logDebug(`${enabled === "toggle"
+            ? "Toggling"
+            : (enabled === true ? "Enabling" : "Disabling")} effect ${effectName}`);
+        const effect = this.getAllEffects().find(e => e.name === effectName);
+
+        if (!effect) {
+            PluginLogger.logWarn(`Cannot find effect named ${effectName}`);
+            return;
+        }
+
+        this._setEffectEnabled(effect, enabled);
+    }
+
     // ------------- MISC ACTIONS ---------------
 
     takeScreenshot(vertical = false): void {
@@ -504,6 +553,10 @@ class MeldRemote {
 
     getAllTracks(): MeldStudioSessionTrackWithId[] {
         return this._getSessionItems("track") as MeldStudioSessionTrackWithId[];
+    }
+
+    getAllEffects(): MeldStudioSessionEffectWithId[] {
+        return this._getSessionItems("effect") as MeldStudioSessionEffectWithId[];
     }
 }
 
