@@ -25,6 +25,7 @@ New effects:
 - **Meld Studio: Show Scene**
 - **Meld Studio: Stage Scene**
 - **Meld Studio: Show Staged Scene**
+- **Meld Studio: Set Browser Source URL**
 - **Meld Studio: Toggle Layer Visibility**
 - **Meld Studio: Toggle Audio Track Mute**
 - **Meld Studio: Toggle Audio Track Monitoring**

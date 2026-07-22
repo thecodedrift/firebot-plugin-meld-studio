@@ -327,6 +327,30 @@ class MeldRemote {
         this.meld.callFunctionWithArgs(layerId, "seek", [seconds]);
     }
 
+    setBrowserSourceUrlById(layerId: string, url: string): void {
+        PluginLogger.logDebug(`Setting URL for browser source ID ${layerId}`);
+        const source = this.getBrowserSources().find(l => l.id === layerId);
+
+        if (!source) {
+            PluginLogger.logWarn(`Cannot find browser source with ID ${layerId}`);
+            return;
+        }
+
+        this._setObjectProperty(source.id, "url", url);
+    }
+
+    setBrowserSourceUrlByName(layerName: string, url: string): void {
+        PluginLogger.logDebug(`Setting URL for browser source ${layerName}`);
+        const source = this.getBrowserSources().find(l => l.name === layerName);
+
+        if (!source) {
+            PluginLogger.logWarn(`Cannot find browser source named ${layerName}`);
+            return;
+        }
+
+        this._setObjectProperty(source.id, "url", url);
+    }
+
     // ------------- AUDIO TRACKS ---------------
 
     private _setTrackMute(

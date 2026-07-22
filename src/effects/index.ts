@@ -1,6 +1,7 @@
 import { ClipEffect } from "./clip";
 import { DismissReplayEffect } from "./dismiss-replay";
 import { ShowReplayEffect } from "./show-replay";
+import { SetBrowserSourceUrlEffect } from "./set-browser-source-url";
 import { ShowSceneEffect } from "./show-scene";
 import { ShowStagedSceneEffect } from "./show-staged-scene";
 import { StageSceneEffect } from "./stage-scene";
@@ -21,6 +22,7 @@ export const MeldEffects = [
     ShowSceneEffect,
     ShowStagedSceneEffect,
     StageSceneEffect,
+    SetBrowserSourceUrlEffect,
     StartRecordingEffect,
     StartStreamingEffect,
     StopRecordingEffect,
