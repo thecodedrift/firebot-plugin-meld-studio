@@ -21,6 +21,7 @@ export const TRACK_VOLUME_CHANGED_EVENT_ID = "track-volume-changed";
 export const TRACK_MONITORING_CHANGED_EVENT_ID = "track-monitoring-changed";
 
 export const GET_CONNECTED_FRONTEND_COMMAND = `${PLUGIN_ID}:get-connected`;
+export const GET_SCREENSHOT_DIR_FRONTEND_COMMAND = `${PLUGIN_ID}:get-screenshot-dir`;
 export const GET_SCENE_LIST_FRONTEND_COMMAND = `${PLUGIN_ID}:get-scene-list`;
 export const GET_SCENE_LIST_WITH_LAYERS_FRONTEND_COMMAND = `${PLUGIN_ID}:get-scene-list-with-layers`;
 export const GET_LAYER_LIST_FRONTEND_COMMAND = `${PLUGIN_ID}:get-layer-list`;
