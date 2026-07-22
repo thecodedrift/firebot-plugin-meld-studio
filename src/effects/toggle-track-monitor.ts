@@ -84,7 +84,7 @@ export const ToggleTrackMonitorEffect: Effects.EffectType<{
         }
 
         $scope.sourceIsSelected = (track: MeldStudioSessionTrackWithId) => {
-            return $scope.effect.selectedSources.some(
+            return ($scope.effect.selectedSources ?? []).some(
                 (s: EffectSource) => s.trackId === track.id
             );
         };
@@ -116,16 +116,16 @@ export const ToggleTrackMonitorEffect: Effects.EffectType<{
         };
 
         $scope.getSourceActionDisplay = (track: MeldStudioSessionTrackWithId) => {
-            const selectedSource = $scope.effect.selectedSources.find(
+            const selectedSource = ($scope.effect.selectedSources ?? []).find(
                 (s: EffectSource) => s.trackId === track.id
             );
-
-            $scope.missingSources = $scope.missingSources
-                .filter((i: EffectSource) => i.trackId !== selectedSource.trackId);
 
             if (selectedSource == null) {
                 return "";
             }
+
+            $scope.missingSources = ($scope.missingSources ?? [])
+                .filter((i: EffectSource) => i.trackId !== selectedSource.trackId);
 
             if (selectedSource.action === "toggle") {
                 return "Toggle";
@@ -149,9 +149,32 @@ export const ToggleTrackMonitorEffect: Effects.EffectType<{
             }
         };
 
+        // Re-bind selections whose track no longer exists (e.g. it was deleted
+        // and recreated, which gives it a new id). Only heal when exactly one
+        // live track matches by name; duplicate names are ambiguous, so those
+        // are left flagged as missing for the user to re-pick rather than
+        // silently binding to the wrong track.
+        $scope.reconcileSelectedSources = () => {
+            const live: MeldStudioSessionTrackWithId[] = $scope.tracks;
+            if (live == null || live.length === 0) {
+                return;
+            }
+
+            for (const sel of ($scope.effect.selectedSources ?? [])) {
+                if (live.some(t => t.id === sel.trackId)) {
+                    continue;
+                }
+
+                const matches = live.filter(t => t.name === sel.trackName);
+                if (matches.length === 1) {
+                    sel.trackId = matches[0].id;
+                }
+            }
+        };
+
         $scope.getTracks = () => {
             $scope.meldConnected = backendCommunicator.fireEventSync("meld:get-connected");
-            $scope.tracks = backendCommunicator.fireEventSync("meld:get-track-list");
+            $scope.tracks = backendCommunicator.fireEventSync("meld:get-track-list") ?? [];
 
             const layers: MeldStudioSessionLayerWithId[] = backendCommunicator.fireEventSync("meld:get-layer-list")
             const scenes: MeldStudioSessionSceneWithId[] = backendCommunicator.fireEventSync("meld:get-scene-list");
@@ -167,19 +190,9 @@ export const ToggleTrackMonitorEffect: Effects.EffectType<{
                     : track.name;
             }
 
-            let selected = $scope.tracks.find((s: MeldStudioSessionTrackWithId) => 
-                s.id === $scope.effect.trackId
-            );
-
-            if (selected == null) {
-                selected = $scope.tracks.find((s: MeldStudioSessionTrackWithId) =>
-                    s.name === $scope.effect.trackName
-                );
-            }
-
-            $scope.selected = selected;
+            $scope.reconcileSelectedSources();
         };
-        
+
         $scope.getTracks();
         $scope.getStoredData();
     },

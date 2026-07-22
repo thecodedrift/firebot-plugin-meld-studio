@@ -70,7 +70,7 @@ export const ToggleLayerVisibilityEffect: Effects.EffectType<{
                 <div ng-if="scenes != null" ng-repeat="scene in filteredScenes">
                     <div style="font-size: 16px;font-weight: 900;color: #b9b9b9;margin-bottom: 5px;">{{scene.name}}</div>
                     <div ng-repeat="layer in getLayers(scene.id) | filter: {name: searchText}">
-                        <label class="control-fb control--checkbox">{{layer.name}}
+                        <label class="control-fb control--checkbox">{{layer.displayName || layer.name}}
                             <input type="checkbox" ng-click="toggleLayerSelected(scene.id, scene.name, layer.id, layer.name)" ng-checked="layerIsSelected(scene.id, layer.id)" aria-label="...">
                             <div class="control__indicator"></div>
                         </label>
@@ -135,7 +135,7 @@ export const ToggleLayerVisibilityEffect: Effects.EffectType<{
         };
 
         $scope.layerIsSelected = (sceneId: string, layerId: string) => {
-            return $scope.effect.selectedLayers.some(
+            return ($scope.effect.selectedLayers ?? []).some(
                 (s: SelectedLayer) => s.sceneId === sceneId && s.layerId === layerId
             );
         };
@@ -170,16 +170,16 @@ export const ToggleLayerVisibilityEffect: Effects.EffectType<{
         };
         
         $scope.getLayerActionDisplay = (sceneId: string, layerId: string) => {
-            const selectedLayer = $scope.effect.selectedLayers.find(
+            const selectedLayer = ($scope.effect.selectedLayers ?? []).find(
                 (s: SelectedLayer) => s.sceneId === sceneId && s.layerId === layerId
             );
-
-            $scope.missingLayers = $scope.missingLayers
-                .filter((i: SelectedLayer) => i !== selectedLayer);
 
             if (selectedLayer == null) {
                 return "";
             }
+
+            $scope.missingLayers = ($scope.missingLayers ?? [])
+                .filter((i: SelectedLayer) => i !== selectedLayer);
 
             if (selectedLayer.action === "toggle") {
                 return "Toggle";
@@ -216,10 +216,78 @@ export const ToggleLayerVisibilityEffect: Effects.EffectType<{
             }
         };
 
+        // Re-bind selections whose layer no longer exists (e.g. it was deleted
+        // and recreated, which gives it a new id). Only heal when exactly one
+        // live layer matches by name/scene; duplicate names are ambiguous, so
+        // those are left flagged as missing for the user to re-pick rather than
+        // silently binding to the wrong layer.
+        $scope.reconcileSelectedLayers = () => {
+            if ($scope.scenes == null || $scope.scenes.length === 0) {
+                return;
+            }
+
+            const live: Array<{ sceneId: string; sceneName: string; layerId: string; layerName: string }> = [];
+            for (const scene of $scope.scenes) {
+                for (const layer of (scene.layers ?? [])) {
+                    live.push({
+                        sceneId: scene.id,
+                        sceneName: scene.name,
+                        layerId: layer.id,
+                        layerName: layer.name
+                    });
+                }
+            }
+
+            for (const sel of ($scope.effect.selectedLayers ?? [])) {
+                if (live.some(l => l.sceneId === sel.sceneId && l.layerId === sel.layerId)) {
+                    continue;
+                }
+                if (sel.layerName == null) {
+                    continue;
+                }
+
+                let match: typeof live[number] | null = null;
+                const contextMatches = live.filter(l =>
+                    l.layerName === sel.layerName && l.sceneName === sel.sceneName
+                );
+
+                if (contextMatches.length === 1) {
+                    match = contextMatches[0];
+                } else {
+                    const nameMatches = live.filter(l => l.layerName === sel.layerName);
+                    if (nameMatches.length === 1) {
+                        match = nameMatches[0];
+                    }
+                }
+
+                if (match != null) {
+                    sel.sceneId = match.sceneId;
+                    sel.sceneName = match.sceneName;
+                    sel.layerId = match.layerId;
+                }
+            }
+        };
+
         $scope.loadLayers = () => {
             $scope.meldConnected = backendCommunicator.fireEventSync("meld:get-connected");
-            $scope.scenes = backendCommunicator.fireEventSync("meld:get-scene-list-with-layers");
+            $scope.scenes = backendCommunicator.fireEventSync("meld:get-scene-list-with-layers") ?? [];
 
+            // Disambiguate layers that share a name within a scene so duplicates
+            // can be told apart in the list.
+            for (const scene of $scope.scenes) {
+                const layers = scene.layers ?? [];
+                const nameCounts: Record<string, number> = {};
+                for (const layer of layers) {
+                    nameCounts[layer.name] = (nameCounts[layer.name] ?? 0) + 1;
+                }
+                for (const layer of layers) {
+                    layer.displayName = nameCounts[layer.name] > 1
+                        ? `${layer.name} (Layer #${layer.index + 1})`
+                        : layer.name;
+                }
+            }
+
+            $scope.reconcileSelectedLayers();
             $scope.filterScenes();
         };
 
