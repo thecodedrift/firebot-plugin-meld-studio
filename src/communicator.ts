@@ -6,6 +6,7 @@ import {
     GET_LAYER_LIST_FRONTEND_COMMAND,
     GET_LAYER_LIST_FOR_SCENE_FRONTEND_COMMAND,
     GET_AUDIO_TRACK_LIST_FRONTEND_COMMAND,
+    GET_EFFECT_LIST_FRONTEND_COMMAND,
     GET_IMAGE_LAYERS_FRONTEND_COMMAND,
     GET_MEDIA_LAYERS_FRONTEND_COMMAND,
     GET_BROWSER_LAYERS_FRONTEND_COMMAND,
@@ -57,6 +58,10 @@ export function registerFrontendListeners(
 
     registerFrontendListener(frontendCommunicator, GET_AUDIO_TRACK_LIST_FRONTEND_COMMAND,
         () => MeldRemote.getAllTracks()
+    );
+
+    registerFrontendListener(frontendCommunicator, GET_EFFECT_LIST_FRONTEND_COMMAND,
+        () => MeldRemote.getAllEffects()
     );
 
     registerFrontendListener(frontendCommunicator, GET_IMAGE_LAYERS_FRONTEND_COMMAND,
