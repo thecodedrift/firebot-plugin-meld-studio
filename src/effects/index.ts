@@ -1,5 +1,6 @@
 import { ClipEffect } from "./clip";
 import { DismissReplayEffect } from "./dismiss-replay";
+import { FadeTrackVolumeInEffect, FadeTrackVolumeOutEffect } from "./fade-track-volume";
 import { PauseResumeLayerEffect } from "./pause-resume-layer";
 import { SetBrowserSourceUrlEffect } from "./set-browser-source-url";
 import { ShowReplayEffect } from "./show-replay";
@@ -21,6 +22,8 @@ import { ToggleVirtualCameraEffect } from "./toggle-virtual-camera";
 export const MeldEffects = [
     ClipEffect,
     DismissReplayEffect,
+    FadeTrackVolumeInEffect,
+    FadeTrackVolumeOutEffect,
     PauseResumeLayerEffect,
     SetBrowserSourceUrlEffect,
     ShowReplayEffect,

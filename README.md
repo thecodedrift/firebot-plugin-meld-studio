@@ -32,6 +32,8 @@ New effects:
 - **Meld Studio: Toggle Effect**
 - **Meld Studio: Toggle Audio Track Mute**
 - **Meld Studio: Toggle Audio Track Monitoring**
+- **Meld Studio: Fade Audio Track Out**
+- **Meld Studio: Fade Audio Track In**
 - **Meld Studio: Toggle Virtual Camera**
 - **Meld Studio: Record Clip**
 - **Meld Studio: Take Screenshot**
