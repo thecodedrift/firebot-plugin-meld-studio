@@ -37,7 +37,7 @@ export const ToggleTrackMonitorEffect: Effects.EffectType<{
                         <span>Audio Track: {{tracks.trackName}}</span>
                     </div>   
                     <div>
-                        <button class="btn btn-danger" ng-click="deleteSceneAtIndex($index)"><i class="far fa-trash"></i></button>
+                        <button class="btn btn-danger" ng-click="deleteSourceAtIndex($index)"><i class="far fa-trash"></i></button>
                     </div>
                 </div>
             </div>
@@ -137,8 +137,9 @@ export const ToggleTrackMonitorEffect: Effects.EffectType<{
         };
 
         $scope.deleteSourceAtIndex = (index: number) => {
+            const removed = $scope.missingSources[index];
             $scope.effect.selectedSources = $scope.effect.selectedSources.filter(
-                (s: EffectSource) => s.trackId !== $scope.missingSources[index].id
+                (s: EffectSource) => s !== removed
             );
             $scope.missingSources.splice(index, 1);
         };
