@@ -1,6 +1,5 @@
-import { RunRequest, ScriptModules } from "firebot-custom-scripts-types";
-import { ArgumentsOf } from "ts-jest/dist/utils/testing";
 import customScript from "../src/main";
+
 test("main default export is the custom script", () => {
   expect(customScript).not.toBeUndefined();
   expect(customScript.run).not.toBeUndefined();
@@ -8,19 +7,14 @@ test("main default export is the custom script", () => {
   expect(customScript.getDefaultParameters).not.toBeUndefined();
 });
 
-test("run() calls logger.info with the message", async () => {
-  const mockInfoLog = jest.fn<
-    void,
-    ArgumentsOf<ScriptModules["logger"]["info"]>
-  >();
-  const expectedMessage = "foobar";
-  const runRequest = ({
-    parameters: { message: expectedMessage },
-    modules: { logger: { info: mockInfoLog } },
-  } as unknown) as RunRequest<any>;
+test("getScriptManifest reports a Firebot 5 startup-only script", async () => {
+  const manifest = await customScript.getScriptManifest!();
+  expect(manifest.firebotVersion).toBe("5");
+  expect(manifest.startupOnly).toBe(true);
+});
 
-  await customScript.run(runRequest);
-
-  expect(mockInfoLog.mock.calls.length).toBe(1);
-  expect(mockInfoLog.mock.calls[0][0]).toBe(expectedMessage);
+test("getDefaultParameters exposes the Meld connection defaults", async () => {
+  const params = await customScript.getDefaultParameters!();
+  expect(params.ipAddress.default).toBe("127.0.0.1");
+  expect(params.port.default).toBe(13376);
 });
