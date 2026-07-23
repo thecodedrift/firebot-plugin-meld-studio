@@ -243,7 +243,7 @@ export const FadeTrackVolumeOutEffect: Effects.EffectType<
         outputs: [
             {
                 label: "Original Volume (dB)",
-                description: "The track's volume in dB before the fade out (0 dB = full). Use this as the Final Volume of a later Fade In to restore the previous level. When multiple tracks are selected, this is the first one's value.",
+                description: "The track's volume in dB before the fade out (0 dB = full). Use this as the Final Volume of a later Fade In to restore the previous level. When multiple tracks are selected, this is the first successfully resolved track's value.",
                 defaultName: "originalVolume"
             }
         ]
