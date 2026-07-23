@@ -19,6 +19,10 @@ type SelectedLayer = {
     action: SourceAction;
 }
 
+// A live layer as it currently exists in Meld (a SelectedLayer without the
+// stored action), used when reconciling stale selections back to live layers.
+type LiveLayer = Omit<SelectedLayer, "action">;
+
 export const ToggleLayerVisibilityEffect: Effects.EffectType<{
     selectedLayers: Array<SelectedLayer>;
 }> = {
@@ -226,7 +230,7 @@ export const ToggleLayerVisibilityEffect: Effects.EffectType<{
                 return;
             }
 
-            const live: Array<{ sceneId: string; sceneName: string; layerId: string; layerName: string }> = [];
+            const live: LiveLayer[] = [];
             for (const scene of $scope.scenes) {
                 for (const layer of (scene.layers ?? [])) {
                     live.push({
@@ -238,6 +242,16 @@ export const ToggleLayerVisibilityEffect: Effects.EffectType<{
                 }
             }
 
+            // Track which live layers are already bound so healing never points
+            // two stale selections at the same physical layer. Seed with the
+            // selections that still resolve to a live layer by id.
+            const claimed = new Set<string>();
+            for (const sel of ($scope.effect.selectedLayers ?? [])) {
+                if (live.some(l => l.sceneId === sel.sceneId && l.layerId === sel.layerId)) {
+                    claimed.add(`${sel.sceneId}:${sel.layerId}`);
+                }
+            }
+
             for (const sel of ($scope.effect.selectedLayers ?? [])) {
                 if (live.some(l => l.sceneId === sel.sceneId && l.layerId === sel.layerId)) {
                     continue;
@@ -246,7 +260,7 @@ export const ToggleLayerVisibilityEffect: Effects.EffectType<{
                     continue;
                 }
 
-                let match: typeof live[number] | null = null;
+                let match: LiveLayer | null = null;
                 const contextMatches = live.filter(l =>
                     l.layerName === sel.layerName && l.sceneName === sel.sceneName
                 );
@@ -261,6 +275,14 @@ export const ToggleLayerVisibilityEffect: Effects.EffectType<{
                 }
 
                 if (match != null) {
+                    const key = `${match.sceneId}:${match.layerId}`;
+                    // Another selection already owns this live layer; binding
+                    // this one too would leave two rows pointing at the same
+                    // physical layer. Leave it flagged as missing instead.
+                    if (claimed.has(key)) {
+                        continue;
+                    }
+                    claimed.add(key);
                     sel.sceneId = match.sceneId;
                     sel.sceneName = match.sceneName;
                     sel.layerId = match.layerId;
