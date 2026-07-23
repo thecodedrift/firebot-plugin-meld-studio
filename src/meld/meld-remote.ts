@@ -320,16 +320,6 @@ class MeldRemote {
         this.meld.setProperty(layerId, "visible", visible);
     }
 
-    playMediaLayer(layerId: string): void {
-        PluginLogger.logDebug(`Playing media on layer ID ${layerId}`);
-        this.meld.callFunction(layerId, "play");
-    }
-
-    pauseMediaLayer(layerId: string): void {
-        PluginLogger.logDebug(`Pausing media on layer ID ${layerId}`);
-        this.meld.callFunction(layerId, "pause");
-    }
-
     seekMediaLayer(layerId: string, seconds: number): void {
         PluginLogger.logDebug(`Seeking media on layer ID ${layerId} to ${seconds} seconds`);
         this.meld.callFunctionWithArgs(layerId, "seek", [seconds]);
@@ -359,11 +349,24 @@ class MeldRemote {
         this._setObjectProperty(source.id, "url", url);
     }
 
-    setLayerPlaybackById(layerId: string, action: "play" | "pause"): void {
+    setLayerPlaybackById(
+        layerId: string,
+        action: "play" | "pause",
+        layerName?: string,
+        sceneName?: string
+    ): void {
         PluginLogger.logDebug(`${action === "play" ? "Resuming" : "Pausing"} layer with ID ${layerId}`);
         const layer = this.getAllLayers().find(l => l.id === layerId);
 
         if (!layer) {
+            // A stored id goes stale when the layer is deleted and recreated in
+            // Meld. Heal at trigger time by falling back to the name — the
+            // editor's reconcile only runs when the effect UI is reopened.
+            if (layerName != null) {
+                PluginLogger.logWarn(`Cannot find layer with ID ${layerId}; falling back to name ${layerName}`);
+                this.setLayerPlaybackByName(layerName, action, sceneName);
+                return;
+            }
             PluginLogger.logWarn(`Cannot find layer with ID ${layerId}`);
             return;
         }
@@ -371,9 +374,17 @@ class MeldRemote {
         this.meld.callFunction(layer.id, action);
     }
 
-    setLayerPlaybackByName(layerName: string, action: "play" | "pause"): void {
-        PluginLogger.logDebug(`${action === "play" ? "Resuming" : "Pausing"} layer ${layerName}`);
-        const layer = this.getAllLayers().find(l => l.name === layerName);
+    setLayerPlaybackByName(layerName: string, action: "play" | "pause", sceneName?: string): void {
+        PluginLogger.logDebug(`${action === "play" ? "Resuming" : "Pausing"} layer ${layerName}${sceneName ? ` in scene ${sceneName}` : ""}`);
+        const matches = this.getAllLayers().filter(l => l.name === layerName);
+
+        // Disambiguate same-named layers by scene when we have one; a layer's
+        // parent is its scene id.
+        let layer = matches[0];
+        if (sceneName != null && matches.length > 1) {
+            const scene = this.getAllScenes().find(s => s.name === sceneName);
+            layer = matches.find(l => l.parent === scene?.id) ?? matches[0];
+        }
 
         if (!layer) {
             PluginLogger.logWarn(`Cannot find layer named ${layerName}`);
