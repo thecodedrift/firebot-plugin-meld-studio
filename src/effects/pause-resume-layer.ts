@@ -216,15 +216,15 @@ export const PauseResumeLayerEffect: Effects.EffectType<{
         $scope.getStoredData();
     },
     onTriggerEvent: async ({ effect }) => {
-        if (effect.selectedSources == null) {
+        if (effect.selectedSources == null || effect.selectedSources.length === 0) {
             return true;
         }
 
-        for (const { layerId, layerName, action } of effect.selectedSources) {
+        for (const { layerId, layerName, sceneName, action } of effect.selectedSources) {
             if (layerId) {
-                MeldRemote.setLayerPlaybackById(layerId, action);
+                MeldRemote.setLayerPlaybackById(layerId, action, layerName, sceneName);
             } else {
-                MeldRemote.setLayerPlaybackByName(layerName, action);
+                MeldRemote.setLayerPlaybackByName(layerName, action, sceneName);
             }
         }
         return true;
