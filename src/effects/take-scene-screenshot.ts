@@ -46,6 +46,9 @@ async function waitForNewScreenshot(dir: string, existing: Set<string>): Promise
             continue;
         }
 
+        // New captures are detected by filename — Meld writes timestamped,
+        // uniquely-named files. A capture that reused/overwrote an existing
+        // name in place would not register as "fresh" here.
         const fresh = names.filter(n => !existing.has(n));
         if (fresh.length === 0) {
             continue;
@@ -78,7 +81,11 @@ async function waitForNewScreenshot(dir: string, existing: Set<string>): Promise
         lastSize = newest.size;
     }
 
+    // Deadline hit without two consecutive equal-size readings. Fall back to
+    // the best candidate we saw, but warn — its size was still changing on the
+    // last poll, so Meld may not have finished writing it.
     if (candidate != null && lastSize > 0) {
+        PluginLogger.logWarn(`Screenshot ${candidate} never reported a stable size before the ${CAPTURE_TIMEOUT_MS}ms deadline; using it anyway (it may be incomplete).`);
         return path.join(dir, candidate);
     }
 
@@ -213,22 +220,24 @@ export const TakeSceneScreenshotEffect: Effects.EffectType<{
         return effect.fileName;
     },
     onTriggerEvent: async ({ effect }) => {
-        const failure = { success: true, outputs: { meldScreenshotPath: "" } };
+        // Soft no-op result: reports success so a running effect list doesn't
+        // halt, but hands downstream an empty screenshot path.
+        const emptyResult = { success: true, outputs: { meldScreenshotPath: "" } };
 
         const screenshotDir = MeldRemote.getScreenshotDir();
         if (!screenshotDir) {
             PluginLogger.logWarn("Cannot take screenshot: no Meld screenshot folder is configured in the plugin settings.");
-            return failure;
+            return emptyResult;
         }
 
         if (!MeldRemote.isConnected()) {
             PluginLogger.logWarn("Cannot take screenshot: Meld Studio is not connected.");
-            return failure;
+            return emptyResult;
         }
 
         if (!effect.outputFolder || !effect.fileName) {
             PluginLogger.logWarn("Cannot take screenshot: output folder or file name is missing.");
-            return failure;
+            return emptyResult;
         }
 
         const run = captureChain.then(async (): Promise<string> => {
