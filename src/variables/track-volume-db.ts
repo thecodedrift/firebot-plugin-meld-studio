@@ -1,5 +1,9 @@
 import { ReplaceVariable } from "@crowbartools/firebot-custom-scripts-types/types/modules/replace-variable-manager";
-import { VARIABLE_PREFIX } from "../constants";
+import {
+    VARIABLE_PREFIX,
+    EVENT_SOURCE_ID,
+    TRACK_VOLUME_CHANGED_EVENT_ID,
+} from "../constants";
 import { MeldRemote } from "../meld/meld-remote";
 
 export const TrackVolumeDbVariable: ReplaceVariable = {
@@ -17,7 +21,14 @@ export const TrackVolumeDbVariable: ReplaceVariable = {
                 description: "The current volume (dB) of the track named \"Music\"."
             }
         ],
-        possibleDataOutput: [ "number" ]
+        possibleDataOutput: [ "number" ],
+        categories: [ "common" ],
+        triggers: {
+            event: [
+                `${EVENT_SOURCE_ID}:${TRACK_VOLUME_CHANGED_EVENT_ID}`,
+            ],
+            manual: true
+        }
     },
     evaluator: async (trigger, trackNameOrId?: string) => {
         let trackId: string | undefined;

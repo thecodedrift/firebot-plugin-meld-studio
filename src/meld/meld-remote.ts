@@ -59,6 +59,10 @@ class MeldRemote {
     private _fadingTracks = new Set<string>();
     // Debounce timers for the volume-changed event, keyed by track id.
     private _volumeEventTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    // Deferred clears of _fadingTracks. A fade's final setGain calls echo back
+    // via gainUpdated asynchronously, after the fade loop has stopped, so we
+    // keep suppressing for one debounce window past the end of the fade.
+    private _fadeClearTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
     meld: MeldStudio;
 
@@ -122,6 +126,10 @@ class MeldRemote {
             cancel();
         }
         this._activeFades.clear();
+        for (const timer of this._fadeClearTimers.values()) {
+            clearTimeout(timer);
+        }
+        this._fadeClearTimers.clear();
         this._fadingTracks.clear();
         for (const timer of this._volumeEventTimers.values()) {
             clearTimeout(timer);
@@ -672,6 +680,13 @@ class MeldRemote {
     ): Promise<number> {
         // Cancel a fade already in flight on this track so they don't fight.
         this._activeFades.get(trackId)?.();
+        // A previous fade may have left a pending suppression-clear; cancel it
+        // so this new fade isn't un-suppressed partway through.
+        const pendingClear = this._fadeClearTimers.get(trackId);
+        if (pendingClear) {
+            clearTimeout(pendingClear);
+            this._fadeClearTimers.delete(trackId);
+        }
 
         const currentAmp = this._gainCache.get(trackId) ?? 1;
         const fromDb = this._ampToDb(currentAmp);
@@ -683,7 +698,7 @@ class MeldRemote {
             const amp = this._dbToAmp(toDb);
             this.meld.setGain(trackId, amp);
             this._gainCache.set(trackId, amp);
-            this._fadingTracks.delete(trackId);
+            this.scheduleFadingClear(trackId);
             return Promise.resolve(fromDb);
         }
 
@@ -694,8 +709,9 @@ class MeldRemote {
             const finish = () => {
                 clearInterval(timer);
                 signal?.removeEventListener("abort", finish);
-                this._fadingTracks.delete(trackId);
                 this._activeFades.delete(trackId);
+                // Keep suppressing briefly: the final setGain echoes back later.
+                this.scheduleFadingClear(trackId);
                 resolve(fromDb);
             };
 
@@ -720,6 +736,20 @@ class MeldRemote {
                 }
             }, FADE_STEP_MS);
         });
+    }
+
+    // Clear a track's fade-suppression flag one debounce window after the fade
+    // stops, so the trailing gainUpdated echoes of our own final setGain calls
+    // don't surface as user-driven volume-changed events.
+    private scheduleFadingClear(trackId: string): void {
+        const existing = this._fadeClearTimers.get(trackId);
+        if (existing) {
+            clearTimeout(existing);
+        }
+        this._fadeClearTimers.set(trackId, setTimeout(() => {
+            this._fadeClearTimers.delete(trackId);
+            this._fadingTracks.delete(trackId);
+        }, VOLUME_EVENT_DEBOUNCE_MS));
     }
 
     /**

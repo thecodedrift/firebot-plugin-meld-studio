@@ -184,13 +184,6 @@ type MeldStudio = {
     setGain: (trackId: string, level: number) => void;
 
     /**
-     * Sets the name of the connecting client, used as the identifier for
-     * observer registrations
-     * @param name Client name
-     */
-    setClientName: (name: string) => void;
-
-    /**
      * Subscribes a context to gain/mute updates for a track. Meld only emits
      * `gainUpdated` for tracks that have an active observer, and emits the
      * track's current value immediately upon registration.
