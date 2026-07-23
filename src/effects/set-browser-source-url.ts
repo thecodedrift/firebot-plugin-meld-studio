@@ -80,7 +80,7 @@ export const SetBrowserSourceUrlEffect: Effects.EffectType<{
     },
     optionsValidator: (effect) => {
         const errors = [];
-        if (effect.sourceName == null) {
+        if (effect.sourceId == null && effect.sourceName == null) {
             errors.push("Please select a browser source.");
         }
         if (effect.url == null || effect.url === "") {
