@@ -1,7 +1,7 @@
 import { ClipEffect } from "./clip";
 import { DismissReplayEffect } from "./dismiss-replay";
-import { ShowReplayEffect } from "./show-replay";
 import { SetBrowserSourceUrlEffect } from "./set-browser-source-url";
+import { ShowReplayEffect } from "./show-replay";
 import { ShowSceneEffect } from "./show-scene";
 import { ShowStagedSceneEffect } from "./show-staged-scene";
 import { StageSceneEffect } from "./stage-scene";
@@ -18,11 +18,11 @@ import { ToggleVirtualCameraEffect } from "./toggle-virtual-camera";
 export const MeldEffects = [
     ClipEffect,
     DismissReplayEffect,
+    SetBrowserSourceUrlEffect,
     ShowReplayEffect,
     ShowSceneEffect,
     ShowStagedSceneEffect,
     StageSceneEffect,
-    SetBrowserSourceUrlEffect,
     StartRecordingEffect,
     StartStreamingEffect,
     StopRecordingEffect,
