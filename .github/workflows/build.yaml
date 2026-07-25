@@ -3,10 +3,11 @@ name: Release
 # Every merge to main cuts a timestamped prerelease. The version is the
 # upstream package.json version plus a UTC build stamp:
 #
-#   X.Y.Z-thecodedrift.YYYY.MM.DD.hh.mm.ss
-#   e.g. 1.0.0-thecodedrift.2026.07.24.03.49.34
+#   X.Y.Z-thecodedrift.YYYYMMDDhhmmss
+#   e.g. 1.0.0-thecodedrift.20260724034934
 #
-# X.Y.Z is the upstream version from package.json; the rest is when the build ran.
+# X.Y.Z is the upstream version from package.json; the 14-digit stamp is when
+# the build ran (UTC). A single numeric identifier keeps the tag valid semver.
 
 on:
   workflow_dispatch:
@@ -51,8 +52,8 @@ jobs:
         run: |
           base=$(node -p "require('./package.json').version")
           plugin=$(node -p "require('./package.json').scriptOutputName")
-          # UTC, zero-padded YYYY.MM.DD.hh.mm.ss
-          stamp=$(date -u +'%Y.%m.%d.%H.%M.%S')
+          # UTC YYYYMMDDhhmmss as a single numeric identifier (valid semver).
+          stamp=$(date -u +'%Y%m%d%H%M%S')
           version="${base}-thecodedrift.${stamp}"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "plugin=${plugin}" >> "$GITHUB_OUTPUT"
