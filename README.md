@@ -9,6 +9,8 @@ Forked from z_ and can be seen as the "sure, but I want *more*" build.
 
 ## Setup
 
+Download the latest release [from the tags page](https://github.com/thecodedrift/firebot-plugin-meld-studio/tags) - all releases are tagged with the date/time they were built, and intentionally do this to avoid conflicts with z_'s primary branch.
+
 1. Copy the `firebot-meld-studio.js` file into your Firebot profile's `scripts` folder (e.g. `%appdata%\Firebot\v5\profiles\Main Profile\scripts`)
 2. Go to Settings > Scripts in Firebot
 3. Click on "Manage Startup Scripts"
